@@ -4,7 +4,7 @@
 # - Delete old archives?
 
 
-import argparse, sys, subprocess, os, os.path, datetime, re, configparser
+import argparse, sys, subprocess, os, os.path, datetime, re, configparser, inspect
 from collections import defaultdict
 from itertools import count
 from operator import itemgetter
@@ -23,9 +23,13 @@ def store():
 
     if len(args.archives) == 0:
         entries = os.listdir(top_dir)
+        try:
+            entries.remove('.DS_Store')
+        except ValueError:
+            pass
         abs_paths = [ os.path.join(top_dir, entry) for entry in entries ]
 
-        du_process = subprocess.Popen(['du', '-Lbs'] + abs_paths, stdout=subprocess.PIPE)
+        du_process = subprocess.Popen(['du', '-Ls'] + abs_paths, stdout=subprocess.PIPE)
         du_so, du_se = du_process.communicate()
         entry_sizes = [ line.split('\t') for line in du_so.decode().rstrip('\n').split('\n') ]
         assert len(entry_sizes) == len(entries)
@@ -135,16 +139,22 @@ sample_cfg = '''\
 '''
 
 def parse_config():
-    filename = os.path.join(os.environ['HOME'], '.backup.py.rc')
+    newcwd = os.environ['HOME']
+    filename = os.path.join(newcwd, '.backup.py.rc')
     if not os.path.isfile(filename):
-        sys.stderr.write(
-            "Configuration file " + filename + " not found.\n")
-        try:
-            with open(filename, 'w') as f: f.write(sample_cfg)
-            sys.exit("Created a sample .backup.py.rc, please customize.")
-        except IOError as e:
-            sys.exit("Failed to create a sample file: {}".format(e))
+        newcwd = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+        filename = os.path.join(newcwd, 'backup.conf')
+        
+        if not os.path.isfile(filename):
+            sys.stderr.write(
+                "Configuration file " + filename + " not found.\n")
+            try:
+                with open(filename, 'w') as f: f.write(sample_cfg)
+                sys.exit("Created a sample .backup.py.rc, please customize.")
+            except IOError as e:
+                sys.exit("Failed to create a sample file: {}".format(e))
 
+    os.chdir(newcwd)
     config = configparser.ConfigParser(allow_no_value=True)
     config.optionxform = str  # option names should be case-sensitive
 
@@ -156,7 +166,7 @@ def parse_config():
     global top_dir, exclusions
 
     try:
-        top_dir = config['General']['directory']
+        top_dir = os.path.abspath(config['General']['directory'])
     except KeyError:
         sys.exit(filename + " is missing a 'directory' entry")
 
