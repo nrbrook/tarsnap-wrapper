@@ -91,6 +91,8 @@ def store_single(archive):
     arch_name = archive + '_' + today_str
     log("Archiving {}...".format(archive))
     tarsnap_cmd = [ 'tarsnap', '-L' ]
+    if args.test:
+        tarsnap_cmd.extend(['--dry-run', '-v'])
     for exclusion in exclusions.get(archive, ()):
         tarsnap_cmd.extend([ '--exclude', os.path.join(archive, exclusion) ])
     arch_name_try = arch_name
@@ -186,6 +188,7 @@ def parse_args():
     storeParser.set_defaults(func=store)
     storeParser.add_argument('archives', metavar='archive', nargs='*',
                              help='archive name')
+    storeParser.add_argument('-t', '--test', action='store_true', help='test mode')
 
     viewParser = subparsers.add_parser('view', help='view current backups',
                                        description='''\
