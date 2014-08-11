@@ -98,6 +98,7 @@ def store_single(archive):
     arch_name_try = arch_name
     for numtry in count(1):
         create_cmd = tarsnap_cmd + [ '-cf', arch_name_try, archive ]
+        print(' '.join(str(x) for x in create_cmd))
         tarsnap = subprocess.Popen(create_cmd, stderr=subprocess.PIPE)
         tarsnap_so, tarsnap_se = tarsnap.communicate()
         tarsnap_se = tarsnap_se.decode()
